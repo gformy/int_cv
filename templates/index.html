@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🐍 Snake CV</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --bg:       #050d0a;
+    --grid:     #0a1f14;
+    --snake1:   #00ff88;
+    --snake2:   #00cc66;
+    --head:     #00ffaa;
+    --glow:     rgba(0,255,136,0.35);
+    --text:     #00ff88;
+    --dim:      #1a5c38;
+    --panel:    #091a10;
+    --border:   #00ff8855;
+    --food-glow: rgba(255,220,0,0.5);
+    --info-bg:  rgba(0,15,8,0.97);
+    --accent:   #00ffaa;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    flex-shrink: 0;
+  }
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(13px,2.5vw,20px);
+    font-weight: 900;
+    color: var(--head);
+    text-shadow: 0 0 12px var(--glow);
+    letter-spacing: 2px;
+  }
+  .logo span { color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.6); }
+  .score-box {
+    display: flex;
+    gap: 20px;
+    font-size: clamp(10px,1.8vw,14px);
+    letter-spacing: 1px;
+  }
+  .score-box div { display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .score-box .lbl { color: var(--dim); font-size: 9px; letter-spacing: 2px; }
+  .score-box .val { color: var(--accent); font-weight:bold; }
+
+  main {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    max-width: 960px;
+    gap: 12px;
+    padding: 10px;
+    justify-content: center;
+    align-items: flex-start;
+    overflow: hidden;
+  }
+
+  #canvas-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+  canvas {
+    display: block;
+    border: 2px solid var(--border);
+    box-shadow: 0 0 20px var(--glow), inset 0 0 40px rgba(0,30,15,0.5);
+    border-radius: 4px;
+    background: var(--grid);
+  }
+
+  #side-panel {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 300px;
+  }
+
+  .panel-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+  }
+  .panel-box h3 {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--dim);
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+  }
+
+  .skill-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 5px 0;
+    font-size: 11px;
+  }
+  .skill-name { width: 80px; color: #aaa; flex-shrink:0; }
+  .skill-bar { flex:1; height: 6px; background: #0a2014; border-radius: 3px; overflow:hidden; }
+  .skill-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--snake2), var(--head));
+    transition: width 0.6s ease;
+    width: 0%;
+    box-shadow: 0 0 6px var(--glow);
+  }
+
+  #info-list {
+    max-height: 200px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dim) transparent;
+  }
+  .info-item {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 5px 0;
+    border-bottom: 1px solid #0a1f14;
+    font-size: 11px;
+    animation: fadeIn 0.4s ease;
+  }
+  .info-item .cat { font-size: 14px; flex-shrink:0; }
+  .info-item .txt { color: #ccc; line-height: 1.4; }
+  @keyframes fadeIn { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:none} }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(5,13,10,0.92);
+    gap: 16px;
+    border-radius: 4px;
+    z-index: 20;
+  }
+  .overlay h2 {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(18px,4vw,32px);
+    color: var(--head);
+    text-shadow: 0 0 20px var(--glow);
+    letter-spacing: 3px;
+    text-align: center;
+  }
+  .overlay p {
+    color: #aaa;
+    font-size: clamp(10px,2vw,14px);
+    text-align: center;
+    line-height: 1.8;
+    padding: 0 20px;
+  }
+  .btn {
+    background: transparent;
+    border: 2px solid var(--head);
+    color: var(--head);
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(11px,2vw,15px);
+    letter-spacing: 2px;
+    padding: 10px 28px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    box-shadow: 0 0 10px var(--glow);
+  }
+  .btn:hover, .btn:active {
+    background: var(--head);
+    color: var(--bg);
+    box-shadow: 0 0 20px var(--glow);
+  }
+
+  #dpad {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
+  }
+  .dpad-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 54px);
+    grid-template-rows: repeat(3, 54px);
+    gap: 4px;
+  }
+  .dpad-btn {
+    background: rgba(0,255,136,0.08);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.1s;
+    touch-action: manipulation;
+  }
+  .dpad-btn:active { background: rgba(0,255,136,0.25); }
+  .dpad-center { background: rgba(0,255,136,0.04); pointer-events:none; }
+
+  #speed-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 1px;
+  }
+  #speed-wrap input { accent-color: var(--head); flex:1; cursor:pointer; }
+
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    margin: 3px 0;
+    color: #aaa;
+  }
+  .legend-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 640px) {
+    main { flex-direction: column; align-items: center; padding: 6px; gap:6px; }
+    #side-panel { max-width: 100%; width: 100%; flex-direction: row; flex-wrap: wrap; }
+    .panel-box { flex: 1; min-width: 140px; }
+    #info-list { max-height: 100px; }
+    #dpad { display: block; }
+    body { overflow: auto; }
+    main { padding-bottom: 200px; }
+    #speed-wrap { display: none; }
+  }
+  @media (min-width: 641px) {
+    #dpad { display: none !important; }
+  }
+
+  #canvas-wrap::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.04) 2px,
+      rgba(0,0,0,0.04) 4px
+    );
+    pointer-events: none;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🐍 SNAKE <span>CV</span></div>
+  <div class="score-box">
+    <div><span class="lbl">PUNTI</span><span class="val" id="score">0</span></div>
+    <div><span class="lbl">RECORD</span><span class="val" id="hiscore">0</span></div>
+    <div><span class="lbl">SEZIONI</span><span class="val" id="collected">0/0</span></div>
+  </div>
+</header>
+
+<main>
+  <div id="canvas-wrap">
+    <canvas id="c"></canvas>
+
+    <div class="overlay" id="start-screen">
+      <h2>🐍 SNAKE CV</h2>
+      <p>Mangia le informazioni del curriculum!<br>
+         Ogni cibo rivela un dato del candidato.<br>
+         <br>
+         ← → ↑ ↓ | WASD | SWIPE
+      </p>
+      <button class="btn" id="start-btn">▶ INIZIA</button>
+    </div>
+
+    <div class="overlay" id="gameover-screen" style="display:none">
+      <h2>GAME OVER</h2>
+      <p id="go-score"></p>
+      <button class="btn" id="go-btn">↺ CONTINUA CAMPAGNA</button>
+      <button class="btn" id="reset-btn" style="font-size:10px;padding:7px 18px;opacity:0.5;border-color:var(--dim);color:var(--dim);">✕ RICOMINCIA DA ZERO</button>
+    </div>
+
+    <div class="overlay" id="win-screen" style="display:none;overflow-y:auto;align-items:flex-start;padding:20px 16px;justify-content:flex-start;">
+      <div style="width:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:16px;">
+        <div style="text-align:center;padding:10px 0 4px;">
+          <h2 style="font-family:'Orbitron',monospace;font-size:clamp(16px,4vw,26px);color:var(--head);text-shadow:0 0 20px var(--glow);letter-spacing:3px;">🎉 CV COMPLETATO!</h2>
+          <p id="win-msg" style="color:#aaa;font-size:clamp(10px,1.8vw,13px);margin-top:8px;line-height:2;"></p>
+        </div>
+        <div id="win-recap" style="display:flex;flex-direction:column;gap:10px;"></div>
+        <div style="text-align:center;padding:8px 0 16px;">
+          <button class="btn" id="new-campaign-btn">↺ NUOVA CAMPAGNA</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="side-panel">
+    <div class="panel-box">
+      <h3>COMPETENZE</h3>
+      <div id="skills-panel">
+        <div class="skill-row"><span class="skill-name">Python</span><div class="skill-bar"><div class="skill-fill" id="sk-python" data-val="85"></div></div></div>
+        <div class="skill-row"><span class="skill-name">React/JS</span><div class="skill-bar"><div class="skill-fill" id="sk-react" data-val="80"></div></div></div>
+        <div class="skill-row"><span class="skill-name">Java</span><div class="skill-bar"><div class="skill-fill" id="sk-java" data-val="75"></div></div></div>
+        <div class="skill-row"><span class="skill-name">SQL/DB</span><div class="skill-bar"><div class="skill-fill" id="sk-sql" data-val="78"></div></div></div>
+        <div class="skill-row"><span class="skill-name">Docker</span><div class="skill-bar"><div class="skill-fill" id="sk-docker" data-val="70"></div></div></div>
+        <div class="skill-row"><span class="skill-name">KNX/IoT</span><div class="skill-bar"><div class="skill-fill" id="sk-knx" data-val="65"></div></div></div>
+      </div>
+    </div>
+
+    <div class="panel-box">
+      <h3>VELOCITÀ</h3>
+      <div id="speed-wrap">
+        <span>LENTA</span>
+        <input type="range" id="speed-slider" min="1" max="5" value="3">
+        <span>VELOCE</span>
+      </div>
+      <div style="margin-top:8px;">
+        <h3 style="margin-top:0;border:none;padding:0;margin-bottom:6px;">LEGENDA CIBI</h3>
+        <div class="legend-row"><div class="legend-dot" style="background:#ffd700"></div>🎓 Istruzione</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#ff6b35"></div>🔧 Tirocinio</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#4ecdc4"></div>⚡ Volontariato</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#a855f7"></div>💻 Sviluppatore</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#f43f5e"></div>🏥 Dipendente ASL ROMA 2</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#06b6d4"></div>🌟 Extra</div>
+      </div>
+    </div>
+
+    <div class="panel-box" style="flex:2;">
+      <h3>INFO RACCOLTE</h3>
+      <div id="info-list">
+        <div style="color:var(--dim);font-size:11px;text-align:center;padding:10px;">
+          Mangia i cibi per scoprire il CV!
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="dpad">
+  <div class="dpad-grid">
+    <div></div>
+    <div class="dpad-btn" id="dpad-up">▲</div>
+    <div></div>
+    <div class="dpad-btn" id="dpad-left">◀</div>
+    <div class="dpad-center"></div>
+    <div class="dpad-btn" id="dpad-right">▶</div>
+    <div></div>
+    <div class="dpad-btn" id="dpad-down">▼</div>
+    <div></div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/cv-data.js') }}"></script>
+<script src="{{ url_for('static', filename='js/storage.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ui-manager.js') }}"></script>
+<script src="{{ url_for('static', filename='js/renderer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/controls.js') }}"></script>
+<script src="{{ url_for('static', filename='js/game.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
