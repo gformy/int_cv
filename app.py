@@ -41,7 +41,7 @@ class SnakeCvApp:
 ║  http://localhost:{port}               ║
 ║                                      ║
 ║  Da mobile sulla stessa rete:        ║
-║  http://<tuo-ip>:{port}               ║
+║  http://<tuo-ip>:{port}                ║
 ║                                      ║
 ║  Ctrl+C per fermare il server        ║
 ╚══════════════════════════════════════╝
